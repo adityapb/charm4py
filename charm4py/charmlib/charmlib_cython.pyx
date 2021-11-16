@@ -13,6 +13,7 @@ from .. import reduction as red
 from cpython cimport array
 import array
 
+import copy
 import time
 import sys
 if PY_MAJOR_VERSION < 3:
@@ -729,6 +730,16 @@ class CharmLib(object):
     CmiGetPesOnPhysicalNode(node, &pelist, &numpes)
     return [pelist[i] for i in range(numpes)]
 
+  def getMsgCopy(self, msgArgs):
+    args = list(msgArgs)
+    copied_args = [None for i in range(len(args))]
+    for i, arg in enumerate(args):
+      if isinstance(arg, np.ndarray) and not arg.dtype.hasobject:
+        copied_args[i] = np.array(arg, copy=True)
+      else:
+        copied_args[i] = copy.deepcopy(arg)
+    return copied_args
+
   def unpackMsg(self, ReceiveMsgBuffer msg not None, int dcopy_start, dest_obj):
     cdef int i = 0
     cdef int buf_size
@@ -776,7 +787,7 @@ class CharmLib(object):
       cdef np.ndarray np_array
     dcopy_size = 0
     if destObj is not None: # if dest obj is local
-      localTag = destObj.__addLocal__((header, msgArgs))
+      localTag = destObj.__addLocal__((header, self.getMsgCopy(msgArgs)))
       memcpy(localMsg_ptr+2, &localTag, sizeof(int))
       msg = localMsg
     elif len(msgArgs) == 0 and len(header) == 0:

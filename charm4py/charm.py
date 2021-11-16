@@ -28,6 +28,7 @@ from .threads import Future, LocalFuture
 from . import reduction
 from . import wait
 import array
+import copy
 try:
     import numpy
 except ImportError:
@@ -97,7 +98,7 @@ class Charm(object):
         self.options = Options()
         self.options.profiling = False
         self.options.pickle_protocol = -1  # -1 selects the highest protocol number
-        self.options.local_msg_optim = False
+        self.options.local_msg_optim = True
         self.options.local_msg_buf_size = 50
         self.options.auto_flush_wait_queues = True
         self.options.quiet = False
@@ -292,7 +293,8 @@ class Charm(object):
             if isinstance(args, Chare):  # obj migrating in
                 em = self.entryMethods[ep + 1]  # get 'migrated' EntryMethod object instead of __init__
                 obj = args
-                obj._contributeInfo = self.lib.initContributeInfo(aid, index, CONTRIBUTOR_TYPE_ARRAY)
+                obj._contributeInfo = self.lib.initContributeInfo(
+                    aid, index, CONTRIBUTOR_TYPE_ARRAY)
                 self.arrays[aid][index] = obj
                 em.run(obj, {}, ())
             else:
@@ -310,6 +312,16 @@ class Charm(object):
         array = self.arrays[aid]
         for index in indexes:
             self.invokeEntryMethod(array[index], ep, header, args)
+
+    def getMsgCopy(self, msgArgs):
+        args = list(msgArgs)
+        copied_args = [None for i in range(len(args))]
+        for i, arg in enumerate(args):
+            if isinstance(arg, numpy.ndarray) and not arg.dtype.hasobject:
+                copied_args[i] = numpy.array(arg, copy=True)
+            else:
+                copied_args[i] = copy.deepcopy(arg)
+        return copied_args
 
     def unpackMsg(self, msg, dcopy_start, dest_obj):
         if msg[:7] == b'_local:':
@@ -358,7 +370,7 @@ class Charm(object):
         direct_copy_buffers = []
         dcopy_size = 0
         if destObj is not None:  # if dest obj is local
-            localTag = destObj.__addLocal__((header, msgArgs))
+            localTag = destObj.__addLocal__((header, self.getMsgCopy(msgArgs)))
             msg = ('_local:' + str(localTag)).encode()
         else:
             direct_copy_hdr = []  # goes to msg header

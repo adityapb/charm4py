@@ -1,5 +1,6 @@
 from . import wait
 import sys
+import warnings
 from greenlet import getcurrent
 from collections import defaultdict
 
@@ -34,15 +35,18 @@ class Chare(object):
     def __init__(self):
         if hasattr(self, '_local'):
             return
-        # messages to this chare from chares in the same PE are stored here without copying
-        # or pickling. _local is a fixed size array that implements a mem pool, where msgs
-        # can be in non-consecutive positions, and the indexes of free slots are stored
-        # as a linked list inside _local, with _local_free_head being the index of the
-        # first free slot, _local[_local_free_head] is the index of next free slot and so on
+        # messages to this chare from chares in the same PE are stored here
+        # without copying or pickling. _local is a fixed size array that
+        # implements a mem pool, where msgs can be in non-consecutive
+        # positions, and the indexes of free slots are stored
+        # as a linked list inside _local, with _local_free_head being the
+        # index of the first free slot, _local[_local_free_head] is the
+        # index of next free slot and so on
         self._local = [i for i in range(1, Options.local_msg_buf_size + 1)]
         self._local[-1] = None
         self._local_free_head = 0
-        # stores condition objects which group all elements waiting on same condition string
+        # stores condition objects which group all elements waiting on
+        # same condition string
         self._active_grp_conds = {}
         # linked list of active wait condition objects
         self._cond_next = None
@@ -51,7 +55,14 @@ class Chare(object):
 
     def __addLocal__(self, msg):
         if self._local_free_head is None:
-            raise Charm4PyError('Local msg buffer full. Increase LOCAL_MSG_BUF_SIZE')
+            warnings.warn("Local buffer was resized and could be affecting "
+                          "performance. Increase LOCAL_MSG_BUF_SIZE "
+                          "to avoid resizing.", RuntimeWarning)
+            old_size = len(self._local)
+            self._local.extend([i for i in range(old_size + 1,
+                                                 2 * old_size + 1)])
+            self._local[-1] = None
+            self._local_free_head = old_size + 1
         h = self._local_free_head
         self._local_free_head = self._local[self._local_free_head]
         self._local[h] = msg
@@ -74,7 +85,8 @@ class Chare(object):
                 deq, done = cond.check(self)
                 dequeued |= deq
                 if done:
-                    # all elements waiting on this condition have been flushed, remove the condition
+                    # all elements waiting on this condition have been
+                    # flushed, remove the condition
                     prev._cond_next = cond._cond_next
                     if cond == self._cond_last:
                         self._cond_last = prev
@@ -713,7 +725,8 @@ def array_proxy_elem(proxy, idx):  # array proxy [] overload method
             assert _slice.start is not None and _slice.stop is not None, 'Must specify start and stop indexes for array slicing'
         return charm.split(proxy, 1, slicing=idx)[0]
 
-def array_proxy_method_gen(ep, argcount, argnames, defaults):  # decorator, generates proxy entry methods
+def array_proxy_method_gen(ep, argcount, argnames, defaults):
+    # decorator, generates proxy entry methods
     def proxy_entry_method(proxy, *args, **kwargs):
         num_args = len(args)
         if num_args < argcount and len(kwargs) > 0:
@@ -726,7 +739,9 @@ def array_proxy_method_gen(ep, argcount, argnames, defaults):  # decorator, gene
                 else:
                     # if not there, see if there is a default value
                     def_idx = i - argcount + len(defaults)
-                    assert def_idx >= 0, 'Value not found for parameter \'' + argname + '\' of entry method'
+                    assert def_idx >= 0, \
+                        'Value not found for parameter \'' + argname + \
+                        '\' of entry method'
                     args.append(defaults[def_idx])
 
         header = {}
