@@ -29,6 +29,7 @@ from . import reduction
 from . import wait
 import array
 import copy
+import cProfile
 try:
     import numpy
 except ImportError:
@@ -1039,6 +1040,16 @@ class CharmRemote(Chare):
 
     def addReducer(self, func):
         charm.addReducer(func)
+
+    def start_cprofile(self):
+        self.pr = cProfile.Profile()
+        self.pr.enable()
+
+    def stop_cprofile(self, dump=True, filename="profile"):
+        if hasattr(self, "pr"):
+            self.pr.disable()
+            if dump:
+                self.pr.dump_stats(filename + str(self.myPe()) + ".prof")
 
     # user signature is: `def updateGlobals(self, global_dict, module_name='__main__')`
     def updateGlobals(self, *args):
