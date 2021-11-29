@@ -14,6 +14,7 @@ except ImportError:
 
 
 # See README.rst
+charm.options.local_msg_optim = False
 
 MAX_ITER = 100
 LEFT, RIGHT, TOP, BOTTOM = range(4)
@@ -72,16 +73,17 @@ class Jacobi(Chare):
         """ this is the main computation loop """
         iteration = 0
         converged = False
+        print(self.temperature[1:blockDimX+1:1, blockDimY].flags)
         while not converged and iteration < MAX_ITER:
             # send ghost faces to my neighbors. sends are asynchronous
             if not self.leftBound:
-                self.left_nb.send(RIGHT, self.temperature[1, 1:blockDimY+1])
+                self.left_nb.send(RIGHT, self.temperature[1, 1:blockDimY+1:1])
             if not self.rightBound:
-                self.right_nb.send(LEFT, self.temperature[blockDimX, 1:blockDimY+1])
+                self.right_nb.send(LEFT, self.temperature[blockDimX, 1:blockDimY+1:1])
             if not self.topBound:
-                self.top_nb.send(BOTTOM, self.temperature[1:blockDimX+1, 1])
+                self.top_nb.send(BOTTOM, self.temperature[1:blockDimX+1:1, 1])
             if not self.bottomBound:
-                self.bottom_nb.send(TOP, self.temperature[1:blockDimX+1, blockDimY])
+                self.bottom_nb.send(TOP, self.temperature[1:blockDimX+1:1, blockDimY])
 
             # receive ghost data from neighbors. iawait iteratively yields
             # channels as they become ready (have data to receive)

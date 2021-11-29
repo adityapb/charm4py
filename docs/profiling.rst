@@ -31,7 +31,7 @@ lot of time waiting for communication to complete (which depends on the size
 and number of messages per second, network throughput and latency, efficiency
 of the communication layer, etc.). If you are seeing significant idle time, one
 thing that can increase performance is using an efficient communication layer
-such as MPI (see :doc:`perf-tips`).
+such as MPI (see :doc:`perf-tips`). Charm4Py also supports profiling using cProfile.
 
 In the future, we plan to support Projections_ which is a full-fledged
 parallel performance analysis tool for Charm++.
@@ -120,6 +120,9 @@ method of each Cell. Most of the send overhead is from the "run" method
 is called when one of its channels receives a message). There is also some
 receive overhead due to chares migrating into this PE (method ``migrated``).
 
-
+To enable profiling using cProfile, set ``charm.options.cprofiling`` to ``True``.
+This will dump a profiling output file for each PE.
+The entry method that calls ``charm.exit()`` needs to be made a coroutine for
+cProfile to be enabled.
 
 .. _Projections: https://charm.readthedocs.io/en/latest/projections/manual.html
