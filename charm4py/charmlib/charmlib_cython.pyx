@@ -1,3 +1,4 @@
+# cython: profile=True
 from ccharm cimport *
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
