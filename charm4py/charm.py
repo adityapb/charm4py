@@ -40,6 +40,17 @@ except ImportError:
 def SECTION_ALL(obj):
     return 0
 
+
+def register(C):
+    if ArrayMap in C.mro():
+        charm.register(C, (GROUP,))  # register ArrayMap only as Group
+    elif Chare in C.mro():
+        charm.register(C)
+    else:
+        raise Charm4PyError("Class " + str(C) + " is not a Chare (can't register)")
+    return C
+
+
 class Options(object):
 
     def __str__(self):
@@ -96,7 +107,7 @@ class Charm(object):
         self.options = Options()
         self.options.profiling = False
         self.options.pickle_protocol = -1  # -1 selects the highest protocol number
-        self.options.local_msg_optim = True
+        self.options.local_msg_optim = False
         self.options.local_msg_buf_size = 50
         self.options.auto_flush_wait_queues = True
         self.options.quiet = False
@@ -473,6 +484,7 @@ class Charm(object):
             self.registerInCharm(C)
 
     def registerAs(self, C, charm_type_id):
+        from .sections import SectionManager
         if charm_type_id == MAINCHARE:
             assert not self.mainchareRegistered, 'More than one entry point has been specified'
             self.mainchareRegistered = True
